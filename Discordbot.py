@@ -407,7 +407,7 @@ async def roleadd(ctx, role, emoji):
     else:
         await ctx.send('insufficient permissions')
 
-@bot.command(name='savecalc', help = 'calculates savings growth with given income', usage = '-s starting savings (default 0),\n -p percent interest annually (default 8%),\n -y number of years (default 10),\n -t target amount (default $1,000,000),\n -si savings increase per year(default 0)')
+@bot.command(name='savecalc', help = 'calculates savings growth with given income', usage = '-s starting savings (default 0),\n -p percent interest annually (default 8%),\n -y number of years (default 10),\n -t target amount (default $1,000,000),\n -si savings rate increase per year(default 0)')
 async def savecalc(ctx, savings, *args):
     i = 0
     percent=1.08
