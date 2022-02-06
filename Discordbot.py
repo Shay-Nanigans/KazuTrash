@@ -153,6 +153,20 @@ async def on_ready():
     print('OK, 3... 2... 1... LET\'S JAM')
     print('------------------------------------------------------')    
 
+#on comment zone
+@bot.event
+async def on_message(message):
+    #print(message.content)
+    if(bot.user.id != message.author):
+
+        pollWords = ["poll:","y/n", "anyone up for", "does that work for everyone", "yes/no" , "anyone want to"]
+        if any(x in str(message.content).lower() for x in pollWords):
+            print(" its a poll")
+            await message.add_reaction("✅")
+            await message.add_reaction("⚪")
+            await message.add_reaction("❌")
+
+    await bot.process_commands(message)
 
 #reaction add zone
 @bot.event
