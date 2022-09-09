@@ -1,4 +1,9 @@
+import asyncio
 from email import message
+import io
+from multiprocessing import freeze_support
+import sys
+import threading
 import urllib
 import json
 import discord
@@ -10,84 +15,93 @@ from zipfile import ZipFile
 import random
 import time
 import math
+import yt_dlp
+import re
+import ytcaptionfinder
 
 
 class URLopener(urllib.request.FancyURLopener):
     version = "Mozilla/5.0"
 
-opener = URLopener()
+if __name__== "__main__":
+    freeze_support()
 
-try:
-    config =json.load(open('config.json'))
-    print("config loaded")
-except:
-    config = {
-        "discord":
-        {
-            "TOKEN":"",
-            "prefix":"$"
-        },
-        "arkServerIP":[["123.456.7.890",12345]],
-        "etherscanToken":"", 
-        "whitelistchannels":[]
-    }
-    
-    json.dump(config, open('config.json', 'w'))
-    print("new config file made")
-print(config)
+    opener = URLopener()
 
-#Discord Bot Config
-TOKEN=config["discord"]["TOKEN"]
+    try:
+        config =json.load(open('config.json'))
+        print("config loaded")
+    except:
+        config = {
+            "discord":
+            {
+                "TOKEN":"",
+                "prefix":"$"
+            },
+            "arkServerIP":[["123.456.7.890",12345]],
+            "etherscanToken":"", 
+            "whitelistchannels":[],
+            "specialMusicID":{"roll": {"file":["dQw4w9WgXcQ-Rick Astley - Never Gonna Give You Up (Official Music Video).mp3"],"loop":0}}
+        }
+        
+        json.dump(config, open('config.json', 'w'))
+        print("new config file made")
+    print(config)
 
-intents = discord.Intents.default()
-intents.members = True
+    #Discord Bot Config
+    TOKEN=config["discord"]["TOKEN"]
 
-bot = commands.Bot(command_prefix=config["discord"]["prefix"], intents=intents)
+    intents = discord.Intents.default()
+    intents.members = True
 
-#config
-arkServerIP = config["arkServerIP"] 
-etherscanToken = config["etherscanToken"]
+    bot = commands.Bot(command_prefix=config["discord"]["prefix"], intents=intents)
 
-whitelistchannels = config["whitelistchannels"] #channels with raised permissions
+    #config
+    arkServerIP = config["arkServerIP"] 
+    etherscanToken = config["etherscanToken"]
 
-binanceFetchLimit = 1000        #number of things to fetch at a time
-timeout = 5      #wait time on API limitation    
-interval = '1m'     #time interval to fetch
+    whitelistchannels = config["whitelistchannels"] #channels with raised permissions
 
-
-#roles
-try:
-    roles =json.load(open('roles.json'))
-    print("roles loaded")
-except:
-    roles = []
-    
-    json.dump(roles, open('roles.json', 'w'))
-    print("new role file made")
-print(roles)
+    binanceFetchLimit = 1000        #number of things to fetch at a time
+    timeout = 5      #wait time on API limitation    
+    interval = '1m'     #time interval to fetch
 
 
-#Ethereum wallet cache
-try:
-    wallet =json.load(open('wallet.json'))
-    print("wallet loaded")
-except:
-    wallet = {}
-    wallet["users"]=[]
-    json.dump(wallet, open('wallet.json', 'w'))
-    print("new wallet made")
-print(wallet)
+    #roles
+    try:
+        roles =json.load(open('roles.json'))
+        print("roles loaded")
+    except:
+        roles = []
+        
+        json.dump(roles, open('roles.json', 'w'))
+        print("new role file made")
+    print(roles)
 
-#Waifu cache
-try:
-    waifu =json.load(open('waifu.json'))
-    print("waifus loaded")
-except:
-    waifu = {}
-    waifu["users"]=[]
-    json.dump(waifu, open('waifu.json', 'w'))
-    print("new waifu made")
-print(waifu)
+
+    #Ethereum wallet cache
+    try:
+        wallet =json.load(open('wallet.json'))
+        print("wallet loaded")
+    except:
+        wallet = {}
+        wallet["users"]=[]
+        json.dump(wallet, open('wallet.json', 'w'))
+        print("new wallet made")
+    print(wallet)
+
+    #Waifu cache
+    try:
+        waifu =json.load(open('waifu.json'))
+        print("waifus loaded")
+    except:
+        waifu = {}
+        waifu["users"]=[]
+        json.dump(waifu, open('waifu.json', 'w'))
+        print("new waifu made")
+    print(waifu)
+else:
+    bot = commands.Bot(command_prefix="idontactuallywantthistowork")
 
 def aquireJson(url):
     response = opener.open(url)
@@ -158,6 +172,9 @@ async def on_ready():
 async def on_message(message):
     #print(message.content)
     if(bot.user.id != message.author):
+        
+        if str(message.content)[0] == config["discord"]["prefix"] and str(message.content)[1:] in config["specialMusicID"]:
+            await specialSongs(message, str(message.content)[1:])
 
         pollWords = ["poll:","y/n", "anyone up for", "does that work for everyone", "yes/no" , "anyone want to"]
         if any(x in str(message.content).lower() for x in pollWords):
@@ -197,9 +214,10 @@ async def on_raw_reaction_remove(reaction):
         print("Wait thats me")
 
 
-@bot.command(name='died', help = 'Dies.')
+@bot.command(name='die', help = 'Dies.')
 async def died(ctx):
     await ctx.send("I DIED")
+    await bot.close()
 
 @bot.command(name='usd', help = 'Returns the USD-CAD exchange rate.')
 async def usd(ctx):
@@ -393,7 +411,7 @@ async def pfpbundle(ctx):
             zipObj = ZipFile(zipName, 'w')
 
         opener.retrieve(str(user.avatar_url_as(format='png', static_format='png', size=128)), tempName+'temppfp.png')
-        zipObj.write(tempName+'temppfp.png', arcname = (user.display_name + '.png'))
+        zipObj.write(tempName+'temppfp.png', arcname = (re.sub(r'\W+', '', user.display_name) + '.png'))
         os.remove(tempName+'temppfp.png')
         
             
@@ -458,4 +476,170 @@ async def savecalc(ctx, savings, *args):
     response = response + "You would have saved $" + str(targetamount) + " after " + str(goalamount) + " years"
     await ctx.send(response)
 
-bot.run(TOKEN)
+@bot.command(name = 'ip')
+async def getip(ctx):
+    await ctx.send(aquireJson('https://api.ipify.org/?format=json')['ip'])
+
+#MUSIC BOT START
+musicQueue = {}
+async def wait_till_stop(mclient):
+    while mclient.is_playing():
+        await asyncio.sleep(1)
+
+async def playsong(file,mclient):
+    
+    mclient.play(discord.FFmpegOpusAudio(file))
+
+async def musicPlayer(channel,mclient):
+    print(channel)
+    while len(musicQueue[channel]['queue'])>0 or musicQueue[channel]['loop'] > 0:
+        print(musicQueue)
+        if musicQueue[channel]['last'] is not None:
+            if musicQueue[channel]['loop'] == 1:
+                musicQueue[channel]['queue'].append(musicQueue[channel]['last'])
+            elif musicQueue[channel]['loop'] == 2:
+                musicQueue[channel]['queue'] = [musicQueue[channel]['last'],*musicQueue[channel]['queue']]
+            
+        file = musicQueue[channel]['queue'].pop(0)
+        musicQueue[channel]['last'] = file
+        await asyncio.gather(playsong(f'songs/{file}',mclient),wait_till_stop(mclient)) 
+    mclient.stop()
+    musicQueue[channel]['last'] = None
+    musicQueue[channel]['loop'] = 0
+    await mclient.disconnect()
+
+async def downloadFile(ctx, url):
+    
+    ydl_opts = {
+                'format': 'bestaudio/best',
+                'outtmpl': os.path.join(os.getcwd(),'songs/temp/%(id)s-%(title)s.%(ext)s'),
+                'download_archive':os.path.join(os.getcwd(),'songs.txt'),
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }],
+            }
+    
+    yt = yt_dlp.YoutubeDL(ydl_opts)
+    try:
+        id = yt_dlp.YoutubeDL().extract_info(url,download=False)['id']
+    except:
+        await ctx.send("Video not found")
+        return None
+
+    for filename in os.listdir("./songs"):
+        if filename.find(id)>=0:
+            print(filename)
+            return filename
+
+    yt.download([url])
+
+    for filename in os.listdir("./songs/temp"):
+        if filename.find(id)>=0:
+            os.rename(f"./songs/temp/{filename}", f"./songs/{filename}")
+        return filename
+
+@bot.command(name="play")
+async def play(ctx, url, special = None):
+    if ctx.author.voice is None:
+        await ctx.send("User not in a channel")
+        return
+    if ctx.author.voice.channel.id not in musicQueue:
+            musicQueue[ctx.author.voice.channel.id]={'queue':[],'loop': 0, 'last': None}
+    
+    music = None
+    for mclient in bot.voice_clients:
+        if str(mclient.channel) is str(ctx.author.voice.channel):
+            music = mclient
+
+    print(special)
+    print(config["specialMusicID"])
+    if special is None or special not in config["specialMusicID"]:
+        filename = await asyncio.gather(downloadFile(ctx, url))
+        filename = filename[0]
+        musicQueue[ctx.author.voice.channel.id]['queue'].append(filename)
+    else:
+        musicQueue[ctx.author.voice.channel.id]['queue'] = config["specialMusicID"][special]["file"]
+        musicQueue[ctx.author.voice.channel.id]['loop'] = int(config["specialMusicID"][special]["loop"])
+        musicQueue[ctx.author.voice.channel.id]['last'] = None
+        if music:
+            music.stop()
+
+    if not music:
+        await ctx.author.voice.channel.connect()
+        for mclient in bot.voice_clients:
+            if str(mclient.channel) is str(ctx.author.voice.channel):
+                music = mclient
+    print(music)
+    if not music.is_playing():
+        await musicPlayer(ctx.author.voice.channel.id,music)
+
+@bot.command(name = 'next')
+async def next(ctx):
+    for mclient in bot.voice_clients:
+            if str(mclient.channel) is str(ctx.author.voice.channel):
+                music = mclient
+    music.stop()
+
+# 0 = off
+# 1 = all
+# 2 = one
+@bot.command(name = 'loop')
+async def loop(ctx, set = None, silent = False):
+    loopname = ["off", "all", "one"]
+    if ctx.author.voice is None:
+        if not silent:
+            await ctx.send("User not in voice channel")
+        return
+    elif ctx.author.voice.channel.id not in musicQueue:
+        musicQueue[ctx.author.voice.channel.id] = {'queue': [], 'loop': 0, 'last': None}
+    
+    if set is None:
+        musicQueue[ctx.author.voice.channel.id]['loop'] += 1
+        if musicQueue[ctx.author.voice.channel.id]['loop']>2:
+            musicQueue[ctx.author.voice.channel.id]['loop'] = 0
+    elif set.lower() == "off":
+        musicQueue[ctx.author.voice.channel.id]['loop'] = 0
+    elif set.lower() == "all":
+        musicQueue[ctx.author.voice.channel.id]['loop'] = 1
+    elif set.lower() == "one":
+        musicQueue[ctx.author.voice.channel.id]['loop'] = 2
+    
+    if not silent:
+        await ctx.send(f"Looping: {loopname[musicQueue[ctx.author.voice.channel.id]['loop']]}")
+
+@bot.command(name = "songqueue")
+async def songqueue(ctx):
+    await ctx.send(musicQueue)
+
+@bot.command(name="stop")
+async def stop(ctx):
+    music = discord.utils.get(bot.voice_clients, guild=ctx.guild)
+    musicQueue[music.channel.id]={'queue':[],'loop': 0, 'last': None}
+    music.stop()
+
+async def specialSongs(ctx, name):
+    if ctx.author.voice is not None:
+        await play(ctx, None, name)
+
+@bot.command(name="ytfind", help = "Finds phrase in a youtube video/channel/playlist. $ytfind \"thing to find\" channel [channel2 channel3.....]")
+async def ytfind(ctx, searchstring, *urls):
+    await ctx.send("Please wait this may take a while.....")
+    matches, errors = await ytcaptionfinder.findList(searchstring, list(urls))
+    msg = f"{len(matches)} matches to \"{searchstring}\" found\n"
+    msgs = [msg]
+    msg = ""
+    for match in matches:
+        msg = msg + f"\n <{match}>"
+        if len(msg)>1800:
+            msgs.append(msg)
+            msg=""
+    if msg != "":
+        msgs.append(msg)
+    for msg in msgs:
+        await ctx.send(msg)
+
+if __name__== "__main__":
+    freeze_support()
+    bot.run(TOKEN)
