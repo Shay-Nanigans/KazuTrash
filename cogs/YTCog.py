@@ -74,7 +74,7 @@ class YTCog(commands.Cog):
 
                 matches, errors = await asyncio.to_thread(ytcaptionfinder.findList,searchstring, list(urls))
                 if not exact:
-                    matches = ytcaptionfinder.toUrl(matches)
+                    matches = ytcaptionfinder.toUrls(matches)
                 msg = f"{len(matches)} matches to \"{searchstring}\" found\n"
                 msgs = [msg]
                 msg = ""

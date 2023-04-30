@@ -140,12 +140,12 @@ async def on_message(message):
         return
     #print(message.content)
     if(bot.user.id != message.author):
-        if message.content:
-            if str(message.content)[0] == config["discord"]["prefix"] and str(message.content)[1:] in config["specialMusicID"]:
-                await specialSongs(message, str(message.content)[1:])
+        # if message.content:
+        #     if str(message.content)[0] == config["discord"]["prefix"] and str(message.content)[1:] in config["specialMusicID"]:
+        #         await specialSongs(message, str(message.content)[1:])
 
         pollWords = ["poll:","y/n", "anyone up for", "does that work for everyone", "yes/no" , "anyone want to"]
-        dayWords = ["day:", "what day", "best day for"]
+        dayWords = ["$day" , "day:", "what day", "which day" "best day for"]
         if any(x in str(message.content).lower() for x in pollWords):
             print(" its a poll")
             await message.add_reaction("✅")
