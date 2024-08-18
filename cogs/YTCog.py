@@ -108,7 +108,10 @@ class YTCog(commands.Cog):
                 clipname = f"vidclipcogtemp/{id}_{start}-{end}{namespeed}{namesize}.mp4"
             else:
                 clipname = f'{filename.group(1)}.mp4'
-            vbitrate = f'{56000/(end-start)}k'
+            if speed:
+                vbitrate = f'{56000/((end-start)/speed)}k'
+            else:
+                vbitrate = f'{56000/(end-start)}k'
             clip.write_videofile(clipname, codec="libx264", bitrate = vbitrate, temp_audiofile=f'vidclipcogtemp/{id}temp-audio.m4a', remove_temp=True, audio_codec='aac') #encode
 
             #too big
