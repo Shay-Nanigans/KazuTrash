@@ -2,7 +2,7 @@ import asyncio
 import discord
 import os
 import yt_dlp
-from moviepy.editor import VideoFileClip,vfx
+from moviepy.editor import VideoFileClip,vfx,AudioFileClip
 import ytcaptionfinder
 import random
 import re
@@ -18,8 +18,12 @@ class YTCog(commands.Cog):
     async def ytclip(self, ctx, url, *args):
         """Makes clip from youtube video. 
         $ytclip url start end
-        -speed [multiplier]: changes clip playback speed"""
-        
+        -speed [multiplier]: changes clip playback speed
+        -audio: mp3 file
+        -noaudio: video with no audio
+        -cropx [percent of frame] [percent of frame]: crops out everything left of %1 and everyting right of %2
+        -cropy [percent of frame] [percent of frame]: crops out everything above of %1 and everyting below of %2
+        -name [filename]: changes filename"""
         if "?t=" in url:
             end = args[0]
             url, start = url.split("?t=",1)
@@ -47,12 +51,30 @@ class YTCog(commands.Cog):
             await ctx.send("Invalid length video")
             return
 
-        ydl_opts = {
+        try:
+            audio = re.search(r"-audio", str(' '.join(args))) 
+            if audio:
+                filetype = "mp3"
+                ydl_opts = {
+                    'outtmpl': os.path.join(os.getcwd(),'vidclipcogtemp/%(id)s.mp3'),
+                    'extract_audio': True,
+                    'format': 'bestaudio'
+                }
+
+            else:
+                filetype = "mp4"
+                ydl_opts = {
                     'outtmpl': os.path.join(os.getcwd(),'vidclipcogtemp/%(id)s.%(ext)s'),
                 }
+        except Exception as e:
+            print(e)
+            
         async with ctx.channel.typing(): #worse loading bar
             id = yt_dlp.YoutubeDL(ydl_opts).extract_info(url)['id'] #fetch
-            clip = VideoFileClip(f"vidclipcogtemp/{id}.mp4").subclip(start, end) #shrink
+            if audio:
+                clip = AudioFileClip(f"vidclipcogtemp/{id}.mp3").subclip(start, end)
+            else:
+                clip = VideoFileClip(f"vidclipcogtemp/{id}.mp4").subclip(start, end) #shrink
             #change speed
             # print(str(' '.join(args)))
             try:
@@ -105,21 +127,24 @@ class YTCog(commands.Cog):
                 print(e)
 
             if not filename:
-                clipname = f"vidclipcogtemp/{id}_{start}-{end}{namespeed}{namesize}.mp4"
+                clipname = f"vidclipcogtemp/{id}_{start}-{end}{namespeed}{namesize}.{filetype}"
             else:
-                clipname = f'{filename.group(1)}.mp4'
+                clipname = f'{filename.group(1)}.{filetype}'
             if speed:
                 vbitrate = f'{56000/((end-start)/speed)}k'
             else:
                 vbitrate = f'{56000/(end-start)}k'
-            clip.write_videofile(clipname, codec="libx264", bitrate = vbitrate, temp_audiofile=f'vidclipcogtemp/{id}temp-audio.m4a', remove_temp=True, audio_codec='aac') #encode
+            if audio:
+                clip.write_audiofile(clipname)
+            else:
+                clip.write_videofile(clipname, codec="libx264", bitrate = vbitrate, temp_audiofile=f'vidclipcogtemp/{id}temp-audio.m4a', remove_temp=True, audio_codec='aac') #encode
 
             #too big
             if os.stat(clipname).st_size > 8300000: 
                 await ctx.send("Video larger than 8MB!")
                 os.remove(clipname)
                 clip.close()
-                os.remove(f"vidclipcogtemp/{id}.mp4")
+                os.remove(f"vidclipcogtemp/{id}.{filetype}")
                 return
 
             await ctx.send(file=discord.File(clipname))
@@ -127,7 +152,7 @@ class YTCog(commands.Cog):
             #cleanup
             os.remove(clipname)
             clip.close()
-            os.remove(f"vidclipcogtemp/{id}.mp4")
+            os.remove(f"vidclipcogtemp/{id}.{filetype}")
 
 
     @commands.command(name="ytfind")
